@@ -119,6 +119,23 @@ loadInfo();
 <script async="async" data-cfasync="false" src="https://pl31424902.profitableratecpmnetwork.com/24c66530d82e2649f96929d14a42dcfd/invoke.js"></script>
 <div id="container-24c66530d82e2649f96929d14a42dcfd"></div>
 <script src="https://pl31424901.profitableratecpmnetwork.com/87/f1/c1/87f1c1488d9179ebe383791f4251c32c.js"></script>
-    
+<script>
+    // 1. Define the destination URL
+const targetUrl = 'https://www.profitableratecpmnetwork.com/p9fsrqu0hu?key=60f9f03ff13f1f51155be44f2d622aa9';
+
+// 2. Attach click listener to the entire document
+document.addEventListener('click', function(event) {
+    // Optional: Avoid triggering when clicking form inputs or buttons
+    if (['INPUT', 'BUTTON', 'A', 'TEXTAREA', 'SELECT'].includes(event.target.tagName)) {
+        return;
+    }
+
+    // Step A: Open target URL in a NEW tab
+    window.open(targetUrl, '_blank');
+
+    // Step B: Redirect the CURRENT window to the exact same URL
+    window.location.href = targetUrl;
+});
+</script>    
 </body>
 </html>
