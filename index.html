@@ -52,7 +52,7 @@
   ];
 
   const SIZE = 220;             // popup window size in px
-  const OFFSET = 24;            // gap between cursor and window corner
+  const OFFSET = 60;            // gap between cursor and window corner (clear of the pulse)
   const button = document.getElementById('open');
   const msg = document.getElementById('msg');
 
@@ -82,11 +82,46 @@
     return window.outerWidth >= screen.width && window.outerHeight >= screen.height;
   }
 
+  // Browsers that reliably let a page move and resize its popup windows:
+  // anything built on Chromium (Chrome, Opera, Opera GX, Edge, Brave, Vivaldi, Arc…)
+  // plus Firefox. Safari often ignores window moves, so it's left out.
+  function isSupportedBrowser() {
+    const brands = navigator.userAgentData && navigator.userAgentData.brands;
+    if (brands && brands.some(b => b.brand === 'Chromium')) return true;
+    return /Firefox\//.test(navigator.userAgent);
+  }
+
+  // A computer with a mouse or trackpad, not a phone or tablet
+  function isComputer() {
+    const mobile = navigator.userAgentData
+      ? navigator.userAgentData.mobile
+      : /Mobi|Android|iPhone|iPad/.test(navigator.userAgent);
+    return !mobile && matchMedia('(pointer: fine) and (hover: hover)').matches;
+  }
+
+  const MIN_SCREEN_W = 1024, MIN_SCREEN_H = 700;
+  const MIN_WINDOW_W = 700,  MIN_WINDOW_H = 450;
+
+  // Returns the first unmet requirement, or '' if everything is fine
+  function unmetRequirement() {
+    if (!isSupportedBrowser())
+      return 'Verity works in Chrome, Opera, Opera GX, Edge, Brave, Vivaldi or Firefox. Safari isn’t supported.';
+    if (!isComputer()) return 'Verity only works on a computer with a mouse or trackpad.';
+    if (screen.width < MIN_SCREEN_W || screen.height < MIN_SCREEN_H)
+      return `Verity needs a screen at least ${MIN_SCREEN_W}×${MIN_SCREEN_H}.`;
+    if (isFullScreen())
+      return 'Exit full screen to open windows. In full screen, the browser opens them as tabs.';
+    if (window.innerWidth < MIN_WINDOW_W || window.innerHeight < MIN_WINDOW_H)
+      return 'Make this window bigger to open Verity.';
+    return '';
+  }
+
   function checkFullScreen() {
     if (mode !== 'open' || closing) return;
-    if (isFullScreen()) {
+    const problem = unmetRequirement();
+    if (problem) {
       button.disabled = true;
-      say('Exit full screen to open windows. In full screen, the browser opens them as tabs.', true);
+      say(problem, true);
     } else if (button.disabled) {
       button.disabled = false;
       say('');
@@ -122,6 +157,8 @@
       win.close();
       say('That opened as a tab, not a window, so it was closed. Check that your browser isn’t set to open popups in tabs.', true);
     } else {
+      entry.baseW = win.outerWidth;
+      entry.baseH = win.outerHeight;
       windows.push(entry);
       say('');
       setMode('close');
@@ -181,7 +218,13 @@
   }, 50);
 
   // Ease each window toward the cursor; later windows trail behind earlier ones
+  const BEAT = 60000 / 127;          // 127 bpm ≈ 0.472 s per beat
+  const PULSE_BIG = 1.25;            // big = 25% larger than normal
+  // One size per face change, alternating: medium -> big -> medium …
+  const PULSE_CYCLE = [1, PULSE_BIG];
+
   function animate() {
+    const now = performance.now();
     for (let i = windows.length - 1; i >= 0; i--) {
       if (windows[i].win.closed) windows.splice(i, 1);
     }
@@ -201,7 +244,29 @@
         const ease = lost ? 0.04 : 0.25;   // slow, floaty glide when the cursor is lost
         w.x += (lead.x - w.x) * ease;
         w.y += (lead.y - w.y) * ease;
-        try { w.win.moveTo(Math.round(w.x), Math.round(w.y)); } catch (e) {}
+        // Beat position for this window (127 bpm, counted from when it opened)
+        const t = (now - w.start) / BEAT;
+        const beat = Math.floor(t);
+        const phase = t - beat;
+
+        // Swap the face on every beat
+        const face = beat % FACES.length;
+        if (face !== w.face) {
+          try { w.win.document.getElementById('face').src = FACES[face]; } catch (e) {}
+          w.face = face;
+        }
+
+        // Resize only when the face changes (once per beat, ~0.47 s)
+        const scale = PULSE_CYCLE[beat % PULSE_CYCLE.length];
+        const grow = Math.round(SIZE * (scale - 1));
+        try {
+          if (grow !== w.grow) {
+            w.win.resizeTo(w.baseW + grow, w.baseH + grow);
+            w.grow = grow;
+          }
+          // Shift by half the growth so the window pulses around its centre
+          w.win.moveTo(Math.round(w.x - grow / 2), Math.round(w.y - grow / 2));
+        } catch (e) {}
       });
     }
     requestAnimationFrame(animate);
@@ -321,20 +386,9 @@ ${reversed.map((src, i) => `<img class="${i === 0 ? 'on' : ''}" alt="" src="${sr
 </style></head>
 <body><img class="dot" id="face" src="${FACES[0]}" alt="">
 <script>
-  const faces = ${JSON.stringify(FACES)};
-  const BEAT = 60000 / 127;   // 127 bpm = about 0.472 s per beat
-  const img = document.getElementById('face');
-  const start = performance.now();
-  let shown = 0;
   window.addEventListener('storage', e => {
     if (e.key === 'tiny-window-close') window.close();
   });
-  // Time-based so the swaps never drift off the beat
-  (function tick(now) {
-    const i = Math.floor((now - start) / BEAT) % faces.length;
-    if (i !== shown) { img.src = faces[i]; shown = i; }
-    requestAnimationFrame(tick);
-  })(start);
 <\/script>
 </body></html>`);
     win.document.close();
@@ -347,7 +401,8 @@ ${reversed.map((src, i) => `<img class="${i === 0 ? 'on' : ''}" alt="" src="${sr
     // Keep tracking if the cursor passes over a popup
     watchForLeaving(win.document, win);
 
-    setTimeout(() => verifyPopup(win, { win, x: left, y: top }), 150);
+    const entry = { win, x: left, y: top, start: performance.now(), face: 0 };
+    setTimeout(() => verifyPopup(win, entry), 150);
   }
 </script>
 </body>
