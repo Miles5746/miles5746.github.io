@@ -267,11 +267,12 @@ ${reversed.map((src, i) => `<img class="${i === 0 ? 'on' : ''}" alt="" src="${sr
 <script>
   const imgs = document.querySelectorAll('img');
   const FRAME_MS = 350;   // slower than the opening (200 ms)
+  const START_DELAY = 300;  // hold the opening frame for 0.3 s before playing
   imgs.forEach((_, k) => setTimeout(() => {
     imgs.forEach((im, i) => im.classList.toggle('on', i === k));
-  }, k * FRAME_MS));
+  }, START_DELAY + k * FRAME_MS));
   // After the first frame has shown, wait 0.3 s, then close this tab
-  setTimeout(() => window.close(), imgs.length * FRAME_MS + 300);
+  setTimeout(() => window.close(), START_DELAY + imgs.length * FRAME_MS + 300);
 <\/script>
 </body></html>`);
       ending.document.close();
