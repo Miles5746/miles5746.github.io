@@ -167,7 +167,7 @@
   // (Many computers don't let a page see the cursor outside its own window,
   // so the windows roam on their own instead of following it.)
   const WANDER_BEATS = 4;            // pick a new spot every 4 beats (~1.9 s)
-  const WANDER_EASE = 0.05;          // how quickly a window glides there (lower = floatier)
+  const WANDER_EASE = 0.01;          // how quickly a window glides there (lower = floatier)
 
   function randomSpot(w) {
     const grow = SIZE * (PULSE_BIG - 1);           // room for the big pulse
@@ -181,7 +181,7 @@
     };
   }
 
-  const BEAT = 60000 / 127;          // 127 bpm ≈ 0.472 s per beat
+  const BEAT = 30000 / 127;          // 127 bpm ≈ 0.472 s per beat
   const PULSE_BIG = 1.25;            // big = 25% larger than normal
   // One size per face change, alternating: medium -> big -> medium …
   const PULSE_CYCLE = [1, PULSE_BIG];
