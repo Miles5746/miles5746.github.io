@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tiny yellow window</title>
+<title>Verity</title>
 <style>
   html, body { height: 100%; margin: 0; }
   body {
@@ -236,30 +236,59 @@
   });
 
   // ---- Closing ----
+  // The ending plays in a NEW tab opened by this click. A tab opened by a script
+  // is allowed to close itself, so it can vanish once the gif has played.
+  // Meanwhile this tab goes to Google.
   function closeEverything() {
     if (closing) return;
     closing = true;
     button.disabled = true;
 
-    // Tell the windows to close: a storage signal, plus a direct close
+    // Tell the smiley windows to close: a storage signal, plus a direct close
     try { localStorage.setItem('tiny-window-close', String(Date.now())); } catch (e) {}
     popups.forEach(w => { try { w.close(); } catch (e) {} });
     song.pause();
     song.currentTime = 0;
 
-    // Play the gif in reverse: last frame -> first frame
+    // Frames in reverse: last -> first
+    const reversed = Array.from(frames).map(f => f.src).reverse();
+
+    const ending = window.open('about:blank', '_blank');
+    if (ending) {
+      ending.document.write(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>&#8203;</title><link rel="icon" href="data:,">
+<style>
+  html, body { margin: 0; height: 100%; background: #555; overflow: hidden; }
+  img { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; visibility: hidden; }
+  img.on { visibility: visible; }
+</style></head>
+<body>
+${reversed.map((src, i) => `<img class="${i === 0 ? 'on' : ''}" alt="" src="${src}">`).join('\n')}
+<script>
+  const imgs = document.querySelectorAll('img');
+  const FRAME_MS = ${FRAME_MS};
+  imgs.forEach((_, k) => setTimeout(() => {
+    imgs.forEach((im, i) => im.classList.toggle('on', i === k));
+  }, k * FRAME_MS));
+  // After the first frame has shown, wait 0.2 s, then close this tab
+  setTimeout(() => window.close(), imgs.length * FRAME_MS + 200);
+<\/script>
+</body></html>`);
+      ending.document.close();
+      // This tab leaves for Google (replace = Back won't return here)
+      setTimeout(() => location.replace('https://www.google.com'), 100);
+      return;
+    }
+
+    // Fallback if the new tab was blocked: play the ending here, then close or leave
     const last = frames.length - 1;
     for (let k = 0; k <= last; k++) {
       setTimeout(() => showFrame(last - k), k * FRAME_MS);
     }
-
-    // After the first frame has shown, wait 0.2 s, then close the launcher
     setTimeout(() => {
       window.close();
-      // Browsers only let a page close itself in some cases.
-      // If the tab is still here, go to the close page instead (replace = no Back button return).
       setTimeout(() => {
-        if (!window.closed) location.replace('/close');
+        if (!window.closed) location.replace('https://www.google.com');
       }, 300);
     }, frames.length * FRAME_MS + 200);
   }
