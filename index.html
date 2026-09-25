@@ -52,7 +52,6 @@
   ];
 
   const SIZE = 220;             // popup window size in px
-  const OFFSET = 60;            // gap between cursor and window corner (clear of the pulse)
   const button = document.getElementById('open');
   const msg = document.getElementById('msg');
 
@@ -60,7 +59,6 @@
   const popups = [];            // every popup opened, for starting/stopping the song
   let count = 0;
   const windows = [];           // { win, x, y } for each confirmed popup window
-  let target = null;            // latest cursor position on screen
   let mode = 'open';            // what the button does next: 'open' or 'close'
   let closing = false;
 
@@ -165,59 +163,24 @@
     }
   }
 
-  // ---- Following the cursor ----
-  const GLIDE_X = 320;           // how far windows drift right when the cursor is lost
-  const GLIDE_Y = 220;           // ...and down
-  const EDGE = 40;               // px from a page edge that counts as "about to leave"
-  let lost = false;              // true while gliding away after losing the cursor
-  let lastMove = 0;              // time of the last mousemove we saw
-  let nearEdge = false;          // was that last mousemove close to a page edge?
+  // ---- Wandering to random spots on the screen ----
+  // (Many computers don't let a page see the cursor outside its own window,
+  // so the windows roam on their own instead of following it.)
+  const WANDER_BEATS = 4;            // pick a new spot every 4 beats (~1.9 s)
+  const WANDER_EASE = 0.05;          // how quickly a window glides there (lower = floatier)
 
-  function track(e) {
-    lost = false;
-    lastMove = performance.now();
-    target = { x: e.screenX + OFFSET, y: e.screenY + OFFSET };
-    const v = e.view || window;
-    nearEdge =
-      e.clientX < EDGE || e.clientY < EDGE ||
-      e.clientX > v.innerWidth - EDGE || e.clientY > v.innerHeight - EDGE;
-  }
-
-  function loseCursor() {
-    if (lost || !target) return;
-    lost = true;
-    const maxX = (screen.availLeft || 0) + screen.availWidth - SIZE;
-    const maxY = (screen.availTop || 0) + screen.availHeight - SIZE;
-    target = {
-      x: Math.min(target.x + GLIDE_X, maxX),
-      y: Math.min(target.y + GLIDE_Y, maxY)
+  function randomSpot(w) {
+    const grow = SIZE * (PULSE_BIG - 1);           // room for the big pulse
+    const left = (screen.availLeft || 0) + grow / 2;
+    const top  = (screen.availTop  || 0) + grow / 2;
+    const right  = (screen.availLeft || 0) + screen.availWidth  - (w.baseW || SIZE) - grow / 2;
+    const bottom = (screen.availTop  || 0) + screen.availHeight - (w.baseH || SIZE) - grow / 2;
+    return {
+      x: left + Math.random() * Math.max(0, right - left),
+      y: top  + Math.random() * Math.max(0, bottom - top)
     };
   }
 
-  // Several ways of noticing the cursor has gone, because browsers differ
-  // in which events they send when it moves onto the tab bar or title bar.
-  function watchForLeaving(doc, win) {
-    doc.addEventListener('mousemove', track);
-    doc.addEventListener('mouseout', e => {
-      if (!e.relatedTarget) setTimeout(() => {
-        if (performance.now() - lastMove > 60) loseCursor();
-      }, 80);
-    });
-    doc.documentElement.addEventListener('mouseleave', () => setTimeout(() => {
-      if (performance.now() - lastMove > 60) loseCursor();
-    }, 80));
-    win.addEventListener('blur', () => setTimeout(() => {
-      if (performance.now() - lastMove > 60) loseCursor();
-    }, 80));
-  }
-  watchForLeaving(document, window);
-
-  // Fallback: the last movement was at a page edge and nothing has come in since
-  setInterval(() => {
-    if (!lost && nearEdge && target && performance.now() - lastMove > 150) loseCursor();
-  }, 50);
-
-  // Ease each window toward the cursor; later windows trail behind earlier ones
   const BEAT = 60000 / 127;          // 127 bpm ≈ 0.472 s per beat
   const PULSE_BIG = 1.25;            // big = 25% larger than normal
   // One size per face change, alternating: medium -> big -> medium …
@@ -238,16 +201,20 @@
       song.pause();
       song.currentTime = 0;
     }
-    if (target) {
-      windows.forEach((w, i) => {
-        const lead = i === 0 ? target : windows[i - 1];
-        const ease = lost ? 0.04 : 0.25;   // slow, floaty glide when the cursor is lost
-        w.x += (lead.x - w.x) * ease;
-        w.y += (lead.y - w.y) * ease;
+    {
+      windows.forEach(w => {
         // Beat position for this window (127 bpm, counted from when it opened)
         const t = (now - w.start) / BEAT;
         const beat = Math.floor(t);
-        const phase = t - beat;
+
+        // Every few beats, choose a new random spot and glide towards it
+        const leg = Math.floor(beat / WANDER_BEATS);
+        if (leg !== w.leg || !w.dest) {
+          w.dest = randomSpot(w);
+          w.leg = leg;
+        }
+        w.x += (w.dest.x - w.x) * WANDER_EASE;
+        w.y += (w.dest.y - w.y) * WANDER_EASE;
 
         // Swap the face on every beat
         const face = beat % FACES.length;
@@ -399,7 +366,6 @@ ${reversed.map((src, i) => `<img class="${i === 0 ? 'on' : ''}" alt="" src="${sr
     }
 
     // Keep tracking if the cursor passes over a popup
-    watchForLeaving(win.document, win);
 
     const entry = { win, x: left, y: top, start: performance.now(), face: 0 };
     setTimeout(() => verifyPopup(win, entry), 150);
