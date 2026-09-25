@@ -257,9 +257,9 @@
     setTimeout(() => {
       window.close();
       // Browsers only let a page close itself in some cases.
-      // If the tab is still here, leave for Google instead (replace = no Back button return).
+      // If the tab is still here, go to the close page instead (replace = no Back button return).
       setTimeout(() => {
-        if (!window.closed) location.replace('https://www.google.com');
+        if (!window.closed) location.replace('/close');
       }, 300);
     }, frames.length * FRAME_MS + 200);
   }
